@@ -1,0 +1,5 @@
+check process <%= @process_name %>
+  with pidfile <%= @path %>/shared/pids/<%= @process_name %>.pid
+  start program = "/bin/sh -c 'cd <%= @path %>/current; PATH=/usr/local/bin:$PATH bundle exec sidekiq -e <%= @env %> -d -P <%= @path %>/shared/pids/<%= @process_name %>.pid -L log/sidekiq.log'" as uid <%= @user %> and gid <%= @group %> with timeout 90 seconds
+  stop program = "/bin/bash -c '/bin/kill -TERM `cat <%= @path %>/shared/pids/<%= @process_name %>.pid`'" with timeout 180 seconds
+  group <%= @process_name %>
