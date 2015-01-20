@@ -4,35 +4,16 @@
 #
 
 node[:deploy].each do |application, deploy|
-  
-  Chef::Log.info("Configuring sidekiq for application #{application}")
-
-  settings = node[:sidekiq]
-  settings = settings[application] if settings
-  workers = (settings && settings[:workers]) ? settings[:workers] : 1
-  process_name = "sidekiq_#{application}"
-
-  template "#{deploy[:deploy_to]}/shared/scripts/sidekiq" do
-    mode '0755'
-    owner deploy[:user]
-    group deploy[:group]
-    source "sidekiq.service.erb"
-    variables(:deploy => deploy, :application => application)
-  end
-
-  template "/etc/monit/conf.d/#{process_name}.monitrc" do
-    source "sidekiq.monitrc.erb"
+  template "#{node[:monit][:conf_dir]}/sidekiq_#{application}.monitrc" do
     owner 'root'
     group 'root'
     mode 0644
-    # variables(
-    #   :env => deploy[:rails_env],
-    #   :path => deploy[:deploy_to],
-    #   :user => deploy[:user],
-    #   :group => deploy[:group],
-    #   :process_name => process_name
-    # )
-    variables({ :application => application, :deploy => deploy, :workers => workers })
+    source "monitrc.conf.erb"
+    variables({
+                  :worker_count => node[:sidekiq][:worker_count],
+                  :app_name => application,
+                  :deploy => deploy
+              })
   end
 
   execute "ensure-sidekiq-is-setup-with-monit" do
@@ -43,7 +24,7 @@ node[:deploy].each do |application, deploy|
 
   execute "restart-sidekiq" do
     command %Q{
-      echo "sleep 20 && monit -g #{process_name} restart all" | at now
+      echo "sleep 20 && monit -g sidekiq_#{application} restart all" | at now
     }
   end
 end
